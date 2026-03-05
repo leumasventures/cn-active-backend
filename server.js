@@ -13,27 +13,32 @@ import apiRoutes from './routes/index.js';
 const app = express();
 const httpServer = createServer(app);
 
+// ── Allowed origins ───────────────────────────────────────────────
+const allowedOrigins = [
+  'https://cnjohnsonventures.com',
+  'https://www.cnjohnsonventures.com',
+  'http://127.0.0.1:5500',
+  'http://localhost:5500',
+  'http://127.0.0.1:5501',
+  'http://localhost:5501',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+const corsOriginHandler = (origin, callback) => {
+  if (!origin || allowedOrigins.includes(origin)) {
+    callback(null, true);
+  } else {
+    callback(new Error(`CORS policy violation from origin: ${origin}`));
+  }
+};
+
 // ── Socket.IO setup ───────────────────────────────────────────────
 const io = new Server(httpServer, {
   cors: {
-    origin: (origin, callback) => {
-      const allowedOrigins = [
-        'http://127.0.0.1:5500',
-        'http://localhost:5500',
-        'http://127.0.0.1:5501',
-        'http://localhost:5501',
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:3000',
-        process.env.FRONTEND_URL,
-      ].filter(Boolean);
-
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS policy violation from origin: ${origin}`));
-      }
-    },
+    origin: corsOriginHandler,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   },
@@ -59,24 +64,7 @@ io.on('connection', (socket) => {
 // ── Express middleware ────────────────────────────────────────────
 app.use(helmet());
 app.use(cors({
-  origin: (origin, callback) => {
-    const allowed = [
-      'http://127.0.0.1:5500',
-      'http://localhost:5500',
-      'http://127.0.0.1:5501',
-      'http://localhost:5501',
-      'http://localhost:5173',
-      'http://127.0.0.1:5173',
-      'http://localhost:3000',
-      process.env.FRONTEND_URL,
-    ].filter(Boolean);
-
-    if (!origin || allowed.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error(`Not allowed by CORS → ${origin}`));
-    }
-  },
+  origin: corsOriginHandler,
   credentials: true,
 }));
 
