@@ -89,3 +89,73 @@ export const deleteSale = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+export const createSale = async (req, res) => {
+  try {
+    const { items, subtotal, discount, tax, total, paymentMethod, customerId, notes } = req.body;
+
+    if (!items?.length) return res.status(400).json({ success: false, message: 'No items provided' });
+
+    const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
+
+    const sale = await prisma.$transaction(async (tx) => {
+      // Generate sale number
+      let saleNo = `INV-${Date.now()}`;
+      if (settings) {
+        const prefix = settings.invoicePrefix || 'INV';
+        saleNo = `${prefix}-${String(settings.nextInvoiceNo || 1).padStart(4, '0')}`;
+        await tx.settings.update({ where: { id: 'global' }, data: { nextInvoiceNo: { increment: 1 } } });
+      }
+
+      const newSale = await tx.sale.create({
+        data: {
+          saleNo,
+          customerId: customerId || null,
+          paymentMethod: paymentMethod?.toUpperCase() || 'CASH',
+          subtotal: subtotal || 0,
+          discountAmt: discount || 0,
+          taxAmt: tax || 0,
+          total: total || 0,
+          notes: notes || null,
+          items: {
+            create: items.map(i => ({
+              productId: i.productId,
+              qty: i.qty,
+              unitPrice: i.price,
+              discountPct: 0,
+              bulkDiscountPct: 0,
+              total: i.total,
+            })),
+          },
+        },
+        include: { customer: true, items: { include: { product: true } } },
+      });
+
+      // Deduct stock
+      for (const item of items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.qty } },
+        });
+      }
+
+      // Update customer loyalty
+      if (customerId) {
+        const pointsEarned = Math.floor((total / 1000) * (settings?.loyaltyPointsRate ?? 1));
+        await tx.customer.update({
+          where: { id: customerId },
+          data: {
+            loyaltyPoints: { increment: pointsEarned },
+            totalPurchases: { increment: total },
+          },
+        });
+      }
+
+      return newSale;
+    });
+
+    res.status(201).json({ success: true, sale });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
