@@ -15,6 +15,7 @@ model User {
   password  String
   role      Role     @default(CASHIER)
   active    Boolean  @default(true)
+  approved  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
