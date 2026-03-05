@@ -2,7 +2,20 @@ import { PrismaClient } from '@prisma/client';
 import { Sequelize } from 'sequelize';
 import mysql2 from 'mysql2';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL +
+        '?connection_limit=5&pool_timeout=20&connect_timeout=30',
+    },
+  },
+  log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+});
+
+// Graceful shutdown
+process.on('beforeExit', async () => {
+  await prisma.$disconnect();
+});
 
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'mysql',
