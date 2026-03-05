@@ -99,17 +99,20 @@ export const createSale = async (req, res) => {
     const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
 
     const sale = await prisma.$transaction(async (tx) => {
-      // Generate sale number
       let saleNo = `INV-${Date.now()}`;
+      let receiptNo = `RCP-${Date.now()}`;
       if (settings) {
         const prefix = settings.invoicePrefix || 'INV';
-        saleNo = `${prefix}-${String(settings.nextInvoiceNo || 1).padStart(4, '0')}`;
+        const num = String(settings.nextInvoiceNo || 1).padStart(4, '0');
+        saleNo    = `${prefix}-${num}`;
+        receiptNo = `RCP-${num}`;
         await tx.settings.update({ where: { id: 'global' }, data: { nextInvoiceNo: { increment: 1 } } });
       }
 
       const newSale = await tx.sale.create({
         data: {
           saleNo,
+          receiptNo,
           customerId: customerId || null,
           paymentMethod: paymentMethod?.toUpperCase() || 'CASH',
           subtotal: subtotal || 0,
