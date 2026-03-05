@@ -86,6 +86,7 @@ export const deleteSale = async (req, res) => {
     res.json({ success: true, message: 'Sale deleted' });
   } catch (err) {
     if (err.code === 'P2025') return res.status(404).json({ success: false, message: 'Sale not found' });
+    if (err.code === 'P2003') return res.status(400).json({ success: false, message: 'Cannot delete sale with linked records' });
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -99,27 +100,23 @@ export const createSale = async (req, res) => {
     const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
 
     const sale = await prisma.$transaction(async (tx) => {
-      let saleNo = `INV-${Date.now()}`;
       let receiptNo = `RCP-${Date.now()}`;
       if (settings) {
-        const prefix = settings.invoicePrefix || 'INV';
         const num = String(settings.nextInvoiceNo || 1).padStart(4, '0');
-        saleNo    = `${prefix}-${num}`;
         receiptNo = `RCP-${num}`;
         await tx.settings.update({ where: { id: 'global' }, data: { nextInvoiceNo: { increment: 1 } } });
       }
 
       const newSale = await tx.sale.create({
         data: {
-          saleNo,
           receiptNo,
           customerId: customerId || null,
           paymentMethod: paymentMethod?.toUpperCase() || 'CASH',
           subtotal: subtotal || 0,
-          discountAmt: discount || 0,
-          taxAmt: tax || 0,
+          discount: discount || 0,
+          tax: tax || 0,
           total: total || 0,
-          notes: notes || null,
+          note: notes || null,
           items: {
             create: items.map(i => ({
               productId: i.productId,
