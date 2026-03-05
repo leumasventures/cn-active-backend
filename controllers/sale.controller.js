@@ -118,14 +118,15 @@ export const createSale = async (req, res) => {
           total: total || 0,
           note: notes || null,
           items: {
-            create: items.map(i => ({
-              productId: i.productId,
-              qty: i.qty,
-              unitPrice: i.price,
-              discountPct: 0,
-              bulkDiscountPct: 0,
-              total: i.total,
-            })),
+              create: items.map(i => ({
+                productId: i.productId,
+                qty: i.qty,
+                unitPrice: i.price,
+                price: i.price,
+                discountPct: 0,
+                bulkDiscountPct: 0,
+                total: i.total,
+              })),
           },
         },
         include: { customer: true, items: { include: { product: true } } },
