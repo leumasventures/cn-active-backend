@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "build": "prisma generate"
+    "build": "npx prisma generate"
   },
   "keywords": [],
   "author": "Leumas IT Nexus",
