@@ -1,7 +1,7 @@
 -- ============================================================
---  DATABASE: railway
+--  DATABASE: u986504880_cn_johnson
 --  Website:  cnjohnsonventures.com
---  Host:     interchange.proxy.rlwy.net:18858
+--  Host:     Hostinger (phpMyAdmin)
 --  Backend:  Express + Socket.IO | Prisma ORM (relationMode=prisma)
 --  Generated: 2026-03-09
 --
@@ -10,11 +10,11 @@
 --        All PKs use VARCHAR(191) to match Prisma cuid() output.
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS `railway`
+CREATE DATABASE IF NOT EXISTS `u986504880_cn_johnson`
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
-USE `railway`;
+USE `u986504880_cn_johnson`;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
