@@ -1,0 +1,203 @@
+# CNJohnsonVentures.com — MySQL Database Documentation
+
+**Database:** `railway` (hosted on Railway)  
+**Host:** `interchange.proxy.rlwy.net:18858`  
+**ORM:** Prisma (`relationMode = "prisma"`)  
+**Backend:** Express + Socket.IO on port `5000`
+
+---
+
+## Quick Start
+
+```bash
+# 1. Apply schema to Railway
+mysql -u root -p railway < cnjohnsonventures_schema.sql
+
+# 2. Seed default admin account
+node prisma/seed.js
+
+# 3. Start the server
+node server.js
+```
+
+Default admin credentials (change after first login):
+- **Email:** `admin@cnjohnsonventures.com`
+- **Password:** `Admin@CNJ2026!`
+
+---
+
+## Environment Variables (.env)
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | `mysql://root:***@interchange.proxy.rlwy.net:18858/railway` |
+| `JWT_ACCESS_SECRET` | your_super_secret_access_key_change_this |
+| `JWT_REFRESH_SECRET` | your_super_secret_refresh_key_change_this |
+| `JWT_ACCESS_EXP` | `7d` |
+| `JWT_REFRESH_EXP` | `7d` |
+| `PORT` | `5000` |
+| `NODE_ENV` | `development` |
+| `FRONTEND_URL` | `https://cnjohnsonventures.com` |
+
+> ⚠️ **Security:** Rotate `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` before going to production. Never commit the real `DATABASE_URL` to version control.
+
+---
+
+## Table Reference (18 tables)
+
+All table names match Prisma model names exactly (PascalCase). Since `relationMode = "prisma"`, foreign key enforcement happens in the Prisma client — not at the database level.
+
+### Auth & Users
+
+#### `User`
+| Column | Type | Notes |
+|---|---|---|
+| id | VARCHAR(191) PK | cuid() |
+| name / email / password | VARCHAR | email is unique |
+| role | VARCHAR | `ADMIN`, `MANAGER`, `CASHIER` |
+| active | BOOLEAN | soft disable |
+| approved | BOOLEAN | admin must approve new registrations |
+| privileges | JSON | optional fine-grained permissions |
+
+---
+
+### Customers & Suppliers
+
+#### `Customer`
+Retail and wholesale buyers. Tracks loyalty points and running balance.
+
+#### `Supplier`
+Vendors/suppliers with outstanding balance tracking.
+
+---
+
+### Inventory
+
+#### `Category`
+Flat list of product categories (unique names).
+
+#### `Warehouse`
+Physical or logical storage locations for stock.
+
+#### `Product`
+Core catalog. Links to `Category`, `Supplier`, and `Warehouse` via optional FK fields.
+
+| Column | Notes |
+|---|---|
+| sku / barcode | Both unique, both optional |
+| price / costPrice | Selling vs. cost for margin tracking |
+| stock | Current on-hand quantity |
+| lowStockThreshold | Triggers `REORDER NOW` in `v_inventory_status` view |
+| active | Soft-delete / hide from POS |
+
+---
+
+### Sales & Transactions
+
+#### `Sale`
+POS transaction header. Supports loyalty points earned/redeemed.
+
+#### `SaleItem`
+Line items for a sale. Cascades on Sale delete.
+
+#### `Purchase`
+Supplier purchase orders with partial payment tracking (`paidAmount`).
+
+#### `PurchaseItem`
+Line items for a purchase. Cascades on Purchase delete.
+
+#### `Quote`
+Sales quotations with status lifecycle: `PENDING → ACCEPTED / REJECTED / EXPIRED`.
+
+#### `QuoteItem`
+Line items for a quote.
+
+#### `CreditNote`
+Refund/credit documents linked to a customer and optionally to a Sale.
+
+#### `CreditNoteItem`
+Line items for a credit note.
+
+---
+
+### Operations
+
+#### `Expense`
+General business expenses with optional category tagging.
+
+#### `StockTransfer`
+Records movement of product stock between warehouses.
+
+---
+
+### Configuration
+
+#### `Settings` *(singleton — id = `"global"`)*
+One row for the entire app. Controls prefixes, tax, loyalty rates, and auto-incrementing counters for receipt/invoice numbers.
+
+#### `BulkDiscountTier`
+Tiered bulk pricing rules linked to Settings. Enabled via `enableBulkDiscount`.
+
+---
+
+## Views
+
+| View | Purpose |
+|---|---|
+| `v_sale_summary` | Sales with resolved customer name (defaults to "Walk-in") |
+| `v_inventory_status` | Products with stock alert (`OK` / `REORDER NOW`) |
+| `v_supplier_balances` | Suppliers ranked by outstanding balance |
+
+---
+
+## Common Queries
+
+**All products needing reorder:**
+```sql
+SELECT sku, name, stock, lowStockThreshold FROM v_inventory_status
+WHERE stock_alert = 'REORDER NOW';
+```
+
+**Recent sales with customer:**
+```sql
+SELECT * FROM v_sale_summary ORDER BY createdAt DESC LIMIT 20;
+```
+
+**Outstanding supplier balances:**
+```sql
+SELECT * FROM v_supplier_balances WHERE balance > 0;
+```
+
+**Sales total by payment method:**
+```sql
+SELECT paymentMethod, COUNT(*) AS txns, SUM(total) AS revenue
+FROM Sale GROUP BY paymentMethod;
+```
+
+**Low-stock products by category:**
+```sql
+SELECT category, sku, name, stock
+FROM v_inventory_status
+WHERE stock_alert = 'REORDER NOW'
+ORDER BY category;
+```
+
+---
+
+## Architecture Notes
+
+- **Prisma `relationMode = "prisma"`** — Relations enforced by Prisma client, not MySQL FK constraints. Required for Railway's MySQL compatibility.
+- **cuid() IDs** — All PKs are `VARCHAR(191)` generated by Prisma's `cuid()`, never auto-increment integers.
+- **Socket.IO** — Real-time events (e.g. new sale notifications) broadcast via `server.js`. Frontend connects at `https://cnjohnsonventures.com`.
+- **JWT Auth** — Access and refresh tokens both expire in `7d` (configurable in `.env`). Rotate secrets before production.
+- **CORS** — Allowed origins include `https://cnjohnsonventures.com`, `localhost:5173`, `localhost:3000`, and `FRONTEND_URL`.
+
+---
+
+## Production Checklist
+
+- [ ] Change `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` to strong random strings
+- [ ] Change admin password after first login
+- [ ] Set `NODE_ENV=production` in Railway environment variables
+- [ ] Remove `http://localhost:*` from `allowedOrigins` in `server.js`
+- [ ] Set up automated Railway DB backups
