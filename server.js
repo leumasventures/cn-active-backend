@@ -11,6 +11,7 @@ import { rateLimiters } from './middleware/ratelimit.js';
 import apiRoutes from './routes/index.js';
 
 const app = express();
+app.set('trust proxy', 1);
 const httpServer = createServer(app);
 
 // ── Allowed origins ───────────────────────────────────────────────

@@ -1,5 +1,5 @@
 -- ============================================================
---  DATABASE: u986504880_cn_johnson
+--  DATABASE: u986504880_cnjohnson_db
 --  Website:  cnjohnsonventures.com
 --  Host:     Hostinger (phpMyAdmin)
 --  Backend:  Express + Socket.IO | Prisma ORM (relationMode=prisma)
@@ -10,11 +10,11 @@
 --        All PKs use VARCHAR(191) to match Prisma cuid() output.
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS `u986504880_cn_johnson`
+CREATE DATABASE IF NOT EXISTS `u986504880_cnjohnson_db`
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
-USE `u986504880_cn_johnson`;
+USE `u986504880_cnjohnson_db`;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
