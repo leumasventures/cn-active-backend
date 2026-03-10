@@ -1,4 +1,4 @@
-// controllers/auth.controller.js — replace your existing file
+// controllers/auth.controller.js
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/db.js';
@@ -28,7 +28,6 @@ export const login = async (req, res) => {
     if (!user.active)
       return res.status(403).json({ success: false, message: 'Account is disabled. Contact admin.' });
 
-    // Block unapproved accounts
     if (!user.approved)
       return res.status(403).json({
         success: false,
@@ -47,6 +46,7 @@ export const login = async (req, res) => {
     });
 
   } catch (err) {
+    console.error('LOGIN ERROR:', err.message, err.stack); // ← logs real error to Render
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -59,11 +59,9 @@ export const signup = async (req, res) => {
     if (!email || !password)
       return res.status(400).json({ success: false, message: 'Please provide email and password' });
 
-    // Map frontend role to Prisma enum
     const roleMap = { admin: 'ADMIN', manager: 'MANAGER', cashier: 'CASHIER' };
     const assignedRole = roleMap[role?.toLowerCase()] || 'CASHIER';
 
-    // Duplicate check
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing)
       return res.status(409).json({ success: false, message: 'An account with this email already exists' });
@@ -78,11 +76,10 @@ export const signup = async (req, res) => {
         role:     assignedRole,
         name,
         active:   true,
-        approved: false,   // always false — admin must approve
+        approved: false,
       },
     });
 
-    // Never return a token — account needs approval first
     res.status(201).json({
       success: true,
       pending: true,
@@ -90,6 +87,7 @@ export const signup = async (req, res) => {
     });
 
   } catch (err) {
+    console.error('SIGNUP ERROR:', err.message, err.stack);
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -104,7 +102,7 @@ export const refreshToken = async (req, res) => {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     const user    = await prisma.user.findUnique({ where: { id: decoded.id } });
 
-    if (!user)        return res.status(401).json({ success: false, message: 'User no longer exists' });
+    if (!user)          return res.status(401).json({ success: false, message: 'User no longer exists' });
     if (!user.approved) return res.status(403).json({ success: false, message: 'Account pending approval', code: 'PENDING_APPROVAL' });
 
     res.status(200).json({
