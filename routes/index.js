@@ -14,6 +14,8 @@ import creditNoteRoutes   from './creditNotes.routes.js';
 import expenseRoutes      from './expenses.routes.js';
 import reportRoutes       from './reports.routes.js';
 import stockTransferRoutes from './stockTransfers.routes.js';
+import stateRoutes from './state.routes.js';
+
 
 const router = express.Router();
 
@@ -31,6 +33,7 @@ router.use('/credit-notes',   creditNoteRoutes);
 router.use('/expenses',       expenseRoutes);
 router.use('/reports',        reportRoutes);
 router.use('/stock-transfers', stockTransferRoutes);
+router.use('/state', stateRoutes);
 
 router.get('/health', (req, res) => {
   res.status(200).json({

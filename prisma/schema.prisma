@@ -18,6 +18,7 @@ model User {
   privileges Json?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  appState  String?  @db.LongText  
 }
 
 model Customer {

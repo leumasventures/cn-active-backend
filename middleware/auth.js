@@ -24,8 +24,6 @@ export const protect = async (req, res, next) => {
 };
 
 /* ── restrictTo: role-based guard ────────────────────────────── */
-// Usage: router.get('/admin-route', protect, restrictTo('ADMIN'), handler)
-// Usage: router.get('/shared-route', protect, restrictTo('ADMIN', 'MANAGER'), handler)
 export const restrictTo = (...allowedRoles) => (req, res, next) => {
   if (!req.user?.role)
     return res.status(403).json({ success: false, error: 'No role found on token' });
