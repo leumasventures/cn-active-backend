@@ -1,8 +1,4 @@
 // routes/state.routes.js
-// Handles saving/loading the entire frontend app state per user
-// Add to your routes/index.js: import stateRoutes from './state.routes.js';
-//                               router.use('/state', stateRoutes);
-
 import express from 'express';
 import prisma from '../config/db.js';
 import { protect } from '../middleware/auth.js';
@@ -34,14 +30,21 @@ router.put('/', protect, async (req, res) => {
     const { state } = req.body;
     if (!state) return res.status(400).json({ success: false, message: 'No state provided' });
 
-    // Validate it's a plain object (basic guard)
     if (typeof state !== 'object' || Array.isArray(state)) {
       return res.status(400).json({ success: false, message: 'Invalid state format' });
     }
 
-    await prisma.user.update({
-      where: { id: req.user.id },
-      data:  { appState: JSON.stringify(state) },
+    // ── FIX: use upsert so it never fails if the user row is missing ──
+    await prisma.user.upsert({
+      where:  { id: req.user.id },
+      update: { appState: JSON.stringify(state) },
+      create: {
+        id:       req.user.id,
+        name:     req.user.name  || 'Unknown',
+        email:    req.user.email || `${req.user.id}@placeholder.com`,
+        password: 'PLACEHOLDER', // won't be used — real signup sets this
+        appState: JSON.stringify(state),
+      },
     });
 
     res.json({ success: true });
