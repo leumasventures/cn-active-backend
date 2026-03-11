@@ -1,504 +1,384 @@
--- ============================================================
---  DATABASE: u986504880_cnjohnson_db
---  Website:  cnjohnsonventures.com
---  Host:     Hostinger (phpMyAdmin)
---  Backend:  Express + Socket.IO | Prisma ORM (relationMode=prisma)
---  Generated: 2026-03-09
---
---  NOTE: relationMode = "prisma" — Foreign keys are NOT enforced
---        at the DB level. Prisma client handles all relations.
---        All PKs use VARCHAR(191) to match Prisma cuid() output.
--- ============================================================
+-- ================================================================
+--  C.N. Johnson Ventures — MySQL Schema
+--  Generated to match prisma/schema.prisma EXACTLY
+--  No backend code changes needed
+--  Database: u986504880_cnjohnson_db
+-- ================================================================
 
-CREATE DATABASE IF NOT EXISTS `u986504880_cnjohnson_db`
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
-USE `u986504880_cnjohnson_db`;
+USE u986504880_cnjohnson_db;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
+-- Drop everything cleanly
+DROP TABLE IF EXISTS BulkDiscountTier;
+DROP TABLE IF EXISTS StockTransfer;
+DROP TABLE IF EXISTS CreditNoteItem;
+DROP TABLE IF EXISTS CreditNote;
+DROP TABLE IF EXISTS QuoteItem;
+DROP TABLE IF EXISTS Quote;
+DROP TABLE IF EXISTS PurchaseItem;
+DROP TABLE IF EXISTS Purchase;
+DROP TABLE IF EXISTS SaleItem;
+DROP TABLE IF EXISTS Sale;
+DROP TABLE IF EXISTS Product;
+DROP TABLE IF EXISTS Category;
+DROP TABLE IF EXISTS Warehouse;
+DROP TABLE IF EXISTS Supplier;
+DROP TABLE IF EXISTS Customer;
+DROP TABLE IF EXISTS Expense;
+DROP TABLE IF EXISTS Settings;
+DROP TABLE IF EXISTS User;
+DROP TABLE IF EXISTS _prisma_migrations;
 
--- ============================================================
--- TABLE: User
--- Admin, Manager, Cashier accounts with JWT auth
--- ============================================================
-CREATE TABLE IF NOT EXISTS `User` (
-  `id`          VARCHAR(191)  NOT NULL,
-  `name`        VARCHAR(191)  NOT NULL,
-  `email`       VARCHAR(191)  NOT NULL,
-  `password`    VARCHAR(191)  NOT NULL,
-  `role`        VARCHAR(50)   NOT NULL DEFAULT 'CASHIER',
-  `active`      BOOLEAN       NOT NULL DEFAULT TRUE,
-  `approved`    BOOLEAN       NOT NULL DEFAULT FALSE,
-  `privileges`  JSON          DEFAULT NULL,
-  `createdAt`   DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updatedAt`   DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-                              ON UPDATE CURRENT_TIMESTAMP(3),
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- ================================================================
+--  User
+-- ================================================================
+CREATE TABLE `User` (
+  `id`         VARCHAR(191) NOT NULL,
+  `name`       VARCHAR(191) NOT NULL,
+  `email`      VARCHAR(191) NOT NULL,
+  `password`   VARCHAR(191) NOT NULL,
+  `role`       ENUM('ADMIN','MANAGER','CASHIER') NOT NULL DEFAULT 'CASHIER',
+  `active`     TINYINT(1)   NOT NULL DEFAULT 1,
+  `approved`   TINYINT(1)   NOT NULL DEFAULT 0,
+  `privileges` JSON,
+  `createdAt`  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt`  DATETIME(3)  NOT NULL,
+  `appState`   LONGTEXT,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `User_email_key` (`email`),
-  INDEX `idx_user_role`     (`role`),
-  INDEX `idx_user_active`   (`active`),
-  INDEX `idx_user_approved` (`approved`)
+  UNIQUE KEY `User_email_key` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `User` (`id`, `name`, `email`, `password`, `role`, `active`, `approved`)
-VALUES (
-  'cjadmin0001000000000000001',
-  'CN Johnson Admin',
-  'admin@cnjohnsonventures.com',
-  '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
-  'ADMIN', TRUE, TRUE
-);
-
-
--- ============================================================
--- TABLE: Customer
--- Retail and wholesale buyers with loyalty points & balance
--- ============================================================
-CREATE TABLE IF NOT EXISTS `Customer` (
-  `id`            VARCHAR(191)    NOT NULL,
-  `name`          VARCHAR(191)    NOT NULL,
-  `email`         VARCHAR(191)    DEFAULT NULL,
-  `phone`         VARCHAR(50)     DEFAULT NULL,
-  `address`       TEXT            DEFAULT NULL,
-  `type`          VARCHAR(50)     NOT NULL DEFAULT 'RETAIL',
-  `loyaltyPoints` INT             NOT NULL DEFAULT 0,
-  `balance`       DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `active`        BOOLEAN         NOT NULL DEFAULT TRUE,
-  `createdAt`     DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updatedAt`     DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-                                  ON UPDATE CURRENT_TIMESTAMP(3),
+-- ================================================================
+--  Customer
+-- ================================================================
+CREATE TABLE `Customer` (
+  `id`            VARCHAR(191) NOT NULL,
+  `name`          VARCHAR(191) NOT NULL,
+  `email`         VARCHAR(191),
+  `phone`         VARCHAR(191),
+  `address`       VARCHAR(191),
+  `loyaltyPoints` INT          NOT NULL DEFAULT 0,
+  `balance`       DOUBLE       NOT NULL DEFAULT 0,
+  `createdAt`     DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt`     DATETIME(3)  NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `Customer_email_key` (`email`),
-  INDEX `idx_customer_type`   (`type`),
-  INDEX `idx_customer_active` (`active`)
+  UNIQUE KEY `Customer_email_key` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- ============================================================
--- TABLE: Supplier
--- Vendors with outstanding balance tracking
--- ============================================================
-CREATE TABLE IF NOT EXISTS `Supplier` (
-  `id`          VARCHAR(191)    NOT NULL,
-  `name`        VARCHAR(191)    NOT NULL,
-  `email`       VARCHAR(191)    DEFAULT NULL,
-  `phone`       VARCHAR(50)     DEFAULT NULL,
-  `address`     TEXT            DEFAULT NULL,
-  `balance`     DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `active`      BOOLEAN         NOT NULL DEFAULT TRUE,
-  `createdAt`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updatedAt`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-                                ON UPDATE CURRENT_TIMESTAMP(3),
+-- ================================================================
+--  Supplier
+-- ================================================================
+CREATE TABLE `Supplier` (
+  `id`        VARCHAR(191) NOT NULL,
+  `name`      VARCHAR(191) NOT NULL,
+  `email`     VARCHAR(191),
+  `phone`     VARCHAR(191),
+  `address`   VARCHAR(191),
+  `balance`   DOUBLE       NOT NULL DEFAULT 0,
+  `createdAt` DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt` DATETIME(3)  NOT NULL,
   PRIMARY KEY (`id`),
-  INDEX `idx_supplier_active` (`active`)
+  UNIQUE KEY `Supplier_email_key` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ================================================================
+--  Warehouse
+-- ================================================================
+CREATE TABLE `Warehouse` (
+  `id`          VARCHAR(191) NOT NULL,
+  `name`        VARCHAR(191) NOT NULL,
+  `location`    VARCHAR(191),
+  `description` VARCHAR(191),
+  `createdAt`   DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt`   DATETIME(3)  NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ============================================================
--- TABLE: Category
--- Flat product category list (unique names)
--- ============================================================
-CREATE TABLE IF NOT EXISTS `Category` (
-  `id`          VARCHAR(191)  NOT NULL,
-  `name`        VARCHAR(191)  NOT NULL,
-  `createdAt`   DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updatedAt`   DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-                              ON UPDATE CURRENT_TIMESTAMP(3),
+-- ================================================================
+--  Category
+-- ================================================================
+CREATE TABLE `Category` (
+  `id`        VARCHAR(191) NOT NULL,
+  `name`      VARCHAR(191) NOT NULL,
+  `createdAt` DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),
   UNIQUE KEY `Category_name_key` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- ============================================================
--- TABLE: Warehouse
--- Physical or logical storage locations
--- ============================================================
-CREATE TABLE IF NOT EXISTS `Warehouse` (
-  `id`          VARCHAR(191)  NOT NULL,
-  `name`        VARCHAR(191)  NOT NULL,
-  `location`    VARCHAR(255)  DEFAULT NULL,
-  `active`      BOOLEAN       NOT NULL DEFAULT TRUE,
-  `createdAt`   DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updatedAt`   DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-                              ON UPDATE CURRENT_TIMESTAMP(3),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `Warehouse_name_key` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- ============================================================
--- TABLE: Product
--- Core catalog linked to Category, Supplier, Warehouse
--- ============================================================
-CREATE TABLE IF NOT EXISTS `Product` (
-  `id`                VARCHAR(191)    NOT NULL,
-  `name`              VARCHAR(191)    NOT NULL,
-  `sku`               VARCHAR(191)    DEFAULT NULL,
-  `barcode`           VARCHAR(191)    DEFAULT NULL,
-  `description`       TEXT            DEFAULT NULL,
-  `price`             DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `costPrice`         DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `stock`             INT             NOT NULL DEFAULT 0,
-  `lowStockThreshold` INT             NOT NULL DEFAULT 5,
-  `categoryId`        VARCHAR(191)    DEFAULT NULL,
-  `supplierId`        VARCHAR(191)    DEFAULT NULL,
-  `warehouseId`       VARCHAR(191)    DEFAULT NULL,
-  `active`            BOOLEAN         NOT NULL DEFAULT TRUE,
-  `createdAt`         DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updatedAt`         DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-                                      ON UPDATE CURRENT_TIMESTAMP(3),
+-- ================================================================
+--  Product
+-- ================================================================
+CREATE TABLE `Product` (
+  `id`                VARCHAR(191) NOT NULL,
+  `name`              VARCHAR(191) NOT NULL,
+  `sku`               VARCHAR(191),
+  `barcode`           VARCHAR(191),
+  `description`       VARCHAR(191),
+  `price`             DOUBLE       NOT NULL,
+  `costPrice`         DOUBLE,
+  `taxRate`           DOUBLE,
+  `stock`             INT          NOT NULL DEFAULT 0,
+  `lowStockThreshold` INT,
+  `unit`              VARCHAR(191),
+  `imageUrl`          VARCHAR(191),
+  `active`            TINYINT(1)   NOT NULL DEFAULT 1,
+  `createdAt`         DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt`         DATETIME(3)  NOT NULL,
+  `categoryId`        VARCHAR(191),
+  `supplierId`        VARCHAR(191),
+  `warehouseId`       VARCHAR(191),
   PRIMARY KEY (`id`),
   UNIQUE KEY `Product_sku_key`     (`sku`),
   UNIQUE KEY `Product_barcode_key` (`barcode`),
-  INDEX `idx_product_category`  (`categoryId`),
-  INDEX `idx_product_supplier`  (`supplierId`),
-  INDEX `idx_product_warehouse` (`warehouseId`),
-  INDEX `idx_product_active`    (`active`),
-  INDEX `idx_product_stock`     (`stock`)
+  KEY `Product_categoryId_fkey`    (`categoryId`),
+  KEY `Product_supplierId_fkey`    (`supplierId`),
+  KEY `Product_warehouseId_fkey`   (`warehouseId`),
+  CONSTRAINT `Product_categoryId_fkey`  FOREIGN KEY (`categoryId`)  REFERENCES `Category`  (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `Product_supplierId_fkey`  FOREIGN KEY (`supplierId`)  REFERENCES `Supplier`  (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `Product_warehouseId_fkey` FOREIGN KEY (`warehouseId`) REFERENCES `Warehouse` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- ============================================================
--- TABLE: Sale
--- POS transaction header with loyalty points support
--- ============================================================
-CREATE TABLE IF NOT EXISTS `Sale` (
-  `id`              VARCHAR(191)    NOT NULL,
-  `receiptNo`       VARCHAR(191)    NOT NULL,
-  `customerId`      VARCHAR(191)    DEFAULT NULL,
-  `userId`          VARCHAR(191)    NOT NULL,
-  `subtotal`        DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `taxAmount`       DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `discountAmount`  DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `total`           DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `paymentMethod`   VARCHAR(50)     NOT NULL DEFAULT 'CASH',
-  `amountPaid`      DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `change`          DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `pointsEarned`    INT             NOT NULL DEFAULT 0,
-  `pointsRedeemed`  INT             NOT NULL DEFAULT 0,
-  `notes`           TEXT            DEFAULT NULL,
-  `status`          VARCHAR(50)     NOT NULL DEFAULT 'COMPLETED',
-  `createdAt`       DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updatedAt`       DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-                                    ON UPDATE CURRENT_TIMESTAMP(3),
+-- ================================================================
+--  Sale
+-- ================================================================
+CREATE TABLE `Sale` (
+  `id`             VARCHAR(191) NOT NULL,
+  `receiptNo`      VARCHAR(191) NOT NULL,
+  `customerId`     VARCHAR(191),
+  `subtotal`       DOUBLE       NOT NULL,
+  `discount`       DOUBLE       NOT NULL DEFAULT 0,
+  `tax`            DOUBLE       NOT NULL DEFAULT 0,
+  `total`          DOUBLE       NOT NULL,
+  `paymentMethod`  VARCHAR(191),
+  `pointsEarned`   INT          NOT NULL DEFAULT 0,
+  `pointsRedeemed` INT          NOT NULL DEFAULT 0,
+  `note`           VARCHAR(191),
+  `createdAt`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),
   UNIQUE KEY `Sale_receiptNo_key` (`receiptNo`),
-  INDEX `idx_sale_customer`  (`customerId`),
-  INDEX `idx_sale_user`      (`userId`),
-  INDEX `idx_sale_status`    (`status`),
-  INDEX `idx_sale_createdAt` (`createdAt`)
+  KEY `Sale_customerId_fkey` (`customerId`),
+  CONSTRAINT `Sale_customerId_fkey` FOREIGN KEY (`customerId`) REFERENCES `Customer` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- ============================================================
--- TABLE: SaleItem
--- Line items per sale
--- ============================================================
-CREATE TABLE IF NOT EXISTS `SaleItem` (
-  `id`          VARCHAR(191)    NOT NULL,
-  `saleId`      VARCHAR(191)    NOT NULL,
-  `productId`   VARCHAR(191)    NOT NULL,
-  `quantity`    INT             NOT NULL DEFAULT 1,
-  `unitPrice`   DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `costPrice`   DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `discount`    DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `total`       DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `createdAt`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+-- ================================================================
+--  SaleItem
+-- ================================================================
+CREATE TABLE `SaleItem` (
+  `id`        VARCHAR(191) NOT NULL,
+  `saleId`    VARCHAR(191) NOT NULL,
+  `productId` VARCHAR(191) NOT NULL,
+  `qty`       INT          NOT NULL,
+  `price`     DOUBLE       NOT NULL,
+  `discount`  DOUBLE       NOT NULL DEFAULT 0,
+  `total`     DOUBLE       NOT NULL,
   PRIMARY KEY (`id`),
-  INDEX `idx_saleitem_sale`    (`saleId`),
-  INDEX `idx_saleitem_product` (`productId`)
+  KEY `SaleItem_saleId_fkey`    (`saleId`),
+  KEY `SaleItem_productId_fkey` (`productId`),
+  CONSTRAINT `SaleItem_saleId_fkey`    FOREIGN KEY (`saleId`)    REFERENCES `Sale`    (`id`) ON DELETE CASCADE  ON UPDATE CASCADE,
+  CONSTRAINT `SaleItem_productId_fkey` FOREIGN KEY (`productId`) REFERENCES `Product` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- ============================================================
--- TABLE: Purchase
--- Supplier purchase orders with partial payment tracking
--- ============================================================
-CREATE TABLE IF NOT EXISTS `Purchase` (
-  `id`            VARCHAR(191)    NOT NULL,
-  `invoiceNo`     VARCHAR(191)    NOT NULL,
-  `supplierId`    VARCHAR(191)    NOT NULL,
-  `userId`        VARCHAR(191)    NOT NULL,
-  `total`         DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `paidAmount`    DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `paymentMethod` VARCHAR(50)     NOT NULL DEFAULT 'CASH',
-  `status`        VARCHAR(50)     NOT NULL DEFAULT 'PENDING',
-  `notes`         TEXT            DEFAULT NULL,
-  `createdAt`     DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updatedAt`     DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-                                  ON UPDATE CURRENT_TIMESTAMP(3),
+-- ================================================================
+--  Purchase
+-- ================================================================
+CREATE TABLE `Purchase` (
+  `id`         VARCHAR(191) NOT NULL,
+  `purchaseNo` VARCHAR(191) NOT NULL,
+  `supplierId` VARCHAR(191) NOT NULL,
+  `total`      DOUBLE       NOT NULL,
+  `paidAmount` DOUBLE       NOT NULL DEFAULT 0,
+  `note`       VARCHAR(191),
+  `createdAt`  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `Purchase_invoiceNo_key` (`invoiceNo`),
-  INDEX `idx_purchase_supplier`  (`supplierId`),
-  INDEX `idx_purchase_user`      (`userId`),
-  INDEX `idx_purchase_status`    (`status`),
-  INDEX `idx_purchase_createdAt` (`createdAt`)
+  UNIQUE KEY `Purchase_purchaseNo_key` (`purchaseNo`),
+  KEY `Purchase_supplierId_fkey` (`supplierId`),
+  CONSTRAINT `Purchase_supplierId_fkey` FOREIGN KEY (`supplierId`) REFERENCES `Supplier` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- ============================================================
--- TABLE: PurchaseItem
--- Line items per purchase order
--- ============================================================
-CREATE TABLE IF NOT EXISTS `PurchaseItem` (
-  `id`          VARCHAR(191)    NOT NULL,
-  `purchaseId`  VARCHAR(191)    NOT NULL,
-  `productId`   VARCHAR(191)    NOT NULL,
-  `quantity`    INT             NOT NULL DEFAULT 1,
-  `unitCost`    DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `total`       DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `createdAt`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+-- ================================================================
+--  PurchaseItem
+-- ================================================================
+CREATE TABLE `PurchaseItem` (
+  `id`         VARCHAR(191) NOT NULL,
+  `purchaseId` VARCHAR(191) NOT NULL,
+  `productId`  VARCHAR(191) NOT NULL,
+  `qty`        INT          NOT NULL,
+  `costPrice`  DOUBLE       NOT NULL,
+  `total`      DOUBLE       NOT NULL,
   PRIMARY KEY (`id`),
-  INDEX `idx_purchaseitem_purchase` (`purchaseId`),
-  INDEX `idx_purchaseitem_product`  (`productId`)
+  KEY `PurchaseItem_purchaseId_fkey` (`purchaseId`),
+  KEY `PurchaseItem_productId_fkey`  (`productId`),
+  CONSTRAINT `PurchaseItem_purchaseId_fkey` FOREIGN KEY (`purchaseId`) REFERENCES `Purchase` (`id`) ON DELETE CASCADE  ON UPDATE CASCADE,
+  CONSTRAINT `PurchaseItem_productId_fkey`  FOREIGN KEY (`productId`)  REFERENCES `Product`  (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- ============================================================
--- TABLE: Quote
--- Sales quotations PENDING -> ACCEPTED / REJECTED / EXPIRED
--- ============================================================
-CREATE TABLE IF NOT EXISTS `Quote` (
-  `id`              VARCHAR(191)    NOT NULL,
-  `quoteNo`         VARCHAR(191)    NOT NULL,
-  `customerId`      VARCHAR(191)    DEFAULT NULL,
-  `userId`          VARCHAR(191)    NOT NULL,
-  `subtotal`        DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `taxAmount`       DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `discountAmount`  DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `total`           DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `status`          VARCHAR(50)     NOT NULL DEFAULT 'PENDING',
-  `validUntil`      DATETIME(3)     DEFAULT NULL,
-  `notes`           TEXT            DEFAULT NULL,
-  `createdAt`       DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updatedAt`       DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-                                    ON UPDATE CURRENT_TIMESTAMP(3),
+-- ================================================================
+--  Quote
+-- ================================================================
+CREATE TABLE `Quote` (
+  `id`         VARCHAR(191) NOT NULL,
+  `quoteNo`    VARCHAR(191) NOT NULL,
+  `customerId` VARCHAR(191),
+  `subtotal`   DOUBLE       NOT NULL,
+  `discount`   DOUBLE       NOT NULL DEFAULT 0,
+  `tax`        DOUBLE       NOT NULL DEFAULT 0,
+  `total`      DOUBLE       NOT NULL,
+  `validUntil` DATETIME(3),
+  `note`       VARCHAR(191),
+  `status`     ENUM('PENDING','ACCEPTED','REJECTED','EXPIRED') NOT NULL DEFAULT 'PENDING',
+  `createdAt`  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),
   UNIQUE KEY `Quote_quoteNo_key` (`quoteNo`),
-  INDEX `idx_quote_customer` (`customerId`),
-  INDEX `idx_quote_user`     (`userId`),
-  INDEX `idx_quote_status`   (`status`)
+  KEY `Quote_customerId_fkey` (`customerId`),
+  CONSTRAINT `Quote_customerId_fkey` FOREIGN KEY (`customerId`) REFERENCES `Customer` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- ============================================================
--- TABLE: QuoteItem
--- Line items per quote
--- ============================================================
-CREATE TABLE IF NOT EXISTS `QuoteItem` (
-  `id`          VARCHAR(191)    NOT NULL,
-  `quoteId`     VARCHAR(191)    NOT NULL,
-  `productId`   VARCHAR(191)    NOT NULL,
-  `quantity`    INT             NOT NULL DEFAULT 1,
-  `unitPrice`   DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `discount`    DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `total`       DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `createdAt`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+-- ================================================================
+--  QuoteItem
+-- ================================================================
+CREATE TABLE `QuoteItem` (
+  `id`        VARCHAR(191) NOT NULL,
+  `quoteId`   VARCHAR(191) NOT NULL,
+  `productId` VARCHAR(191) NOT NULL,
+  `qty`       INT          NOT NULL,
+  `price`     DOUBLE       NOT NULL,
+  `discount`  DOUBLE       NOT NULL DEFAULT 0,
+  `total`     DOUBLE       NOT NULL,
   PRIMARY KEY (`id`),
-  INDEX `idx_quoteitem_quote`   (`quoteId`),
-  INDEX `idx_quoteitem_product` (`productId`)
+  KEY `QuoteItem_quoteId_fkey`   (`quoteId`),
+  KEY `QuoteItem_productId_fkey` (`productId`),
+  CONSTRAINT `QuoteItem_quoteId_fkey`   FOREIGN KEY (`quoteId`)   REFERENCES `Quote`   (`id`) ON DELETE CASCADE  ON UPDATE CASCADE,
+  CONSTRAINT `QuoteItem_productId_fkey` FOREIGN KEY (`productId`) REFERENCES `Product` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- ============================================================
--- TABLE: CreditNote
--- Refund/credit docs linked to Customer and optionally Sale
--- ============================================================
-CREATE TABLE IF NOT EXISTS `CreditNote` (
-  `id`          VARCHAR(191)    NOT NULL,
-  `creditNo`    VARCHAR(191)    NOT NULL,
-  `customerId`  VARCHAR(191)    NOT NULL,
-  `saleId`      VARCHAR(191)    DEFAULT NULL,
-  `userId`      VARCHAR(191)    NOT NULL,
-  `total`       DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `reason`      TEXT            DEFAULT NULL,
-  `status`      VARCHAR(50)     NOT NULL DEFAULT 'OPEN',
-  `createdAt`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updatedAt`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-                                ON UPDATE CURRENT_TIMESTAMP(3),
+-- ================================================================
+--  CreditNote
+-- ================================================================
+CREATE TABLE `CreditNote` (
+  `id`         VARCHAR(191) NOT NULL,
+  `creditNo`   VARCHAR(191) NOT NULL,
+  `customerId` VARCHAR(191),
+  `saleId`     VARCHAR(191),
+  `amount`     DOUBLE       NOT NULL,
+  `reason`     VARCHAR(191),
+  `createdAt`  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),
   UNIQUE KEY `CreditNote_creditNo_key` (`creditNo`),
-  INDEX `idx_creditnote_customer` (`customerId`),
-  INDEX `idx_creditnote_sale`     (`saleId`),
-  INDEX `idx_creditnote_status`   (`status`)
+  KEY `CreditNote_customerId_fkey` (`customerId`),
+  KEY `CreditNote_saleId_fkey`     (`saleId`),
+  CONSTRAINT `CreditNote_customerId_fkey` FOREIGN KEY (`customerId`) REFERENCES `Customer` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `CreditNote_saleId_fkey`     FOREIGN KEY (`saleId`)     REFERENCES `Sale`     (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- ============================================================
--- TABLE: CreditNoteItem
--- Line items per credit note
--- ============================================================
-CREATE TABLE IF NOT EXISTS `CreditNoteItem` (
-  `id`            VARCHAR(191)    NOT NULL,
-  `creditNoteId`  VARCHAR(191)    NOT NULL,
-  `productId`     VARCHAR(191)    NOT NULL,
-  `quantity`      INT             NOT NULL DEFAULT 1,
-  `unitPrice`     DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `total`         DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `createdAt`     DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+-- ================================================================
+--  CreditNoteItem
+-- ================================================================
+CREATE TABLE `CreditNoteItem` (
+  `id`           VARCHAR(191) NOT NULL,
+  `creditNoteId` VARCHAR(191) NOT NULL,
+  `productId`    VARCHAR(191) NOT NULL,
+  `qty`          INT          NOT NULL,
+  `price`        DOUBLE       NOT NULL,
+  `total`        DOUBLE       NOT NULL,
   PRIMARY KEY (`id`),
-  INDEX `idx_creditnoteitem_creditnote` (`creditNoteId`),
-  INDEX `idx_creditnoteitem_product`    (`productId`)
+  KEY `CreditNoteItem_creditNoteId_fkey` (`creditNoteId`),
+  KEY `CreditNoteItem_productId_fkey`    (`productId`),
+  CONSTRAINT `CreditNoteItem_creditNoteId_fkey` FOREIGN KEY (`creditNoteId`) REFERENCES `CreditNote` (`id`) ON DELETE CASCADE  ON UPDATE CASCADE,
+  CONSTRAINT `CreditNoteItem_productId_fkey`    FOREIGN KEY (`productId`)    REFERENCES `Product`    (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- ============================================================
--- TABLE: Expense
--- Business expenses with optional category tagging
--- ============================================================
-CREATE TABLE IF NOT EXISTS `Expense` (
-  `id`          VARCHAR(191)    NOT NULL,
-  `description` VARCHAR(255)    NOT NULL,
-  `amount`      DECIMAL(12,2)   NOT NULL DEFAULT 0.00,
-  `category`    VARCHAR(100)    DEFAULT NULL,
-  `userId`      VARCHAR(191)    NOT NULL,
-  `receiptPath` VARCHAR(255)    DEFAULT NULL,
-  `notes`       TEXT            DEFAULT NULL,
-  `expenseDate` DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `createdAt`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updatedAt`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-                                ON UPDATE CURRENT_TIMESTAMP(3),
-  PRIMARY KEY (`id`),
-  INDEX `idx_expense_user`     (`userId`),
-  INDEX `idx_expense_category` (`category`),
-  INDEX `idx_expense_date`     (`expenseDate`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- ============================================================
--- TABLE: StockTransfer
--- Product stock movement between warehouses
--- ============================================================
-CREATE TABLE IF NOT EXISTS `StockTransfer` (
-  `id`              VARCHAR(191)    NOT NULL,
-  `productId`       VARCHAR(191)    NOT NULL,
-  `fromWarehouseId` VARCHAR(191)    DEFAULT NULL,
-  `toWarehouseId`   VARCHAR(191)    DEFAULT NULL,
-  `quantity`        INT             NOT NULL DEFAULT 0,
-  `userId`          VARCHAR(191)    NOT NULL,
-  `notes`           TEXT            DEFAULT NULL,
-  `createdAt`       DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  PRIMARY KEY (`id`),
-  INDEX `idx_transfer_product`        (`productId`),
-  INDEX `idx_transfer_from_warehouse` (`fromWarehouseId`),
-  INDEX `idx_transfer_to_warehouse`   (`toWarehouseId`),
-  INDEX `idx_transfer_user`           (`userId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- ============================================================
--- TABLE: Settings  (singleton — id = 'global')
--- ============================================================
-CREATE TABLE IF NOT EXISTS `Settings` (
-  `id`                  VARCHAR(191)    NOT NULL DEFAULT 'global',
-  `businessName`        VARCHAR(191)    NOT NULL DEFAULT 'CN Johnson Ventures',
-  `businessAddress`     TEXT            DEFAULT NULL,
-  `businessPhone`       VARCHAR(50)     DEFAULT NULL,
-  `businessEmail`       VARCHAR(191)    DEFAULT NULL,
-  `businessLogo`        VARCHAR(255)    DEFAULT NULL,
-  `taxEnabled`          BOOLEAN         NOT NULL DEFAULT FALSE,
-  `taxRate`             DECIMAL(5,2)    NOT NULL DEFAULT 0.00,
-  `taxLabel`            VARCHAR(50)     NOT NULL DEFAULT 'VAT',
-  `receiptPrefix`       VARCHAR(20)     NOT NULL DEFAULT 'RCP-',
-  `invoicePrefix`       VARCHAR(20)     NOT NULL DEFAULT 'INV-',
-  `quotePrefix`         VARCHAR(20)     NOT NULL DEFAULT 'QTE-',
-  `creditNotePrefix`    VARCHAR(20)     NOT NULL DEFAULT 'CN-',
-  `receiptCounter`      INT             NOT NULL DEFAULT 1,
-  `invoiceCounter`      INT             NOT NULL DEFAULT 1,
-  `quoteCounter`        INT             NOT NULL DEFAULT 1,
-  `creditNoteCounter`   INT             NOT NULL DEFAULT 1,
-  `loyaltyEnabled`      BOOLEAN         NOT NULL DEFAULT FALSE,
-  `pointsPerCurrency`   DECIMAL(8,2)    NOT NULL DEFAULT 1.00,
-  `pointsRedeemRate`    DECIMAL(8,2)    NOT NULL DEFAULT 1.00,
-  `enableBulkDiscount`  BOOLEAN         NOT NULL DEFAULT FALSE,
-  `currencySymbol`      VARCHAR(10)     NOT NULL DEFAULT '$',
-  `currencyCode`        VARCHAR(10)     NOT NULL DEFAULT 'USD',
-  `updatedAt`           DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-                                        ON UPDATE CURRENT_TIMESTAMP(3),
+-- ================================================================
+--  Expense
+-- ================================================================
+CREATE TABLE `Expense` (
+  `id`        VARCHAR(191) NOT NULL,
+  `title`     VARCHAR(191) NOT NULL,
+  `amount`    DOUBLE       NOT NULL,
+  `category`  VARCHAR(191),
+  `note`      VARCHAR(191),
+  `date`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `createdAt` DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt` DATETIME(3)  NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `Settings` (`id`, `businessName`, `businessEmail`)
-VALUES ('global', 'CN Johnson Ventures', 'info@cnjohnsonventures.com')
-ON DUPLICATE KEY UPDATE `id` = `id`;
-
-
--- ============================================================
--- TABLE: BulkDiscountTier
--- Tiered bulk pricing rules linked to Settings
--- ============================================================
-CREATE TABLE IF NOT EXISTS `BulkDiscountTier` (
-  `id`          VARCHAR(191)    NOT NULL,
-  `settingsId`  VARCHAR(191)    NOT NULL DEFAULT 'global',
-  `minQuantity` INT             NOT NULL DEFAULT 1,
-  `discountPct` DECIMAL(5,2)   NOT NULL DEFAULT 0.00,
-  `label`       VARCHAR(100)    DEFAULT NULL,
-  `createdAt`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+-- ================================================================
+--  StockTransfer
+-- ================================================================
+CREATE TABLE `StockTransfer` (
+  `id`              VARCHAR(191) NOT NULL,
+  `productId`       VARCHAR(191) NOT NULL,
+  `fromWarehouseId` VARCHAR(191) NOT NULL,
+  `toWarehouseId`   VARCHAR(191) NOT NULL,
+  `qty`             INT          NOT NULL,
+  `note`            VARCHAR(191),
+  `createdAt`       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),
-  INDEX `idx_bulkdiscount_settings` (`settingsId`)
+  KEY `StockTransfer_productId_fkey`       (`productId`),
+  KEY `StockTransfer_fromWarehouseId_fkey` (`fromWarehouseId`),
+  KEY `StockTransfer_toWarehouseId_fkey`   (`toWarehouseId`),
+  CONSTRAINT `StockTransfer_productId_fkey`       FOREIGN KEY (`productId`)       REFERENCES `Product`   (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `StockTransfer_fromWarehouseId_fkey` FOREIGN KEY (`fromWarehouseId`) REFERENCES `Warehouse` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `StockTransfer_toWarehouseId_fkey`   FOREIGN KEY (`toWarehouseId`)   REFERENCES `Warehouse` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ================================================================
+--  Settings
+-- ================================================================
+CREATE TABLE `Settings` (
+  `id`                    VARCHAR(191) NOT NULL DEFAULT 'global',
+  `companyName`           VARCHAR(191),
+  `address`               VARCHAR(191),
+  `phone`                 VARCHAR(191),
+  `email`                 VARCHAR(191),
+  `currency`              VARCHAR(191) NOT NULL DEFAULT 'USD',
+  `taxRate`               DOUBLE       NOT NULL DEFAULT 0,
+  `lowStockThreshold`     INT          NOT NULL DEFAULT 10,
+  `invoicePrefix`         VARCHAR(191) NOT NULL DEFAULT 'INV',
+  `receiptPrefix`         VARCHAR(191) NOT NULL DEFAULT 'REC',
+  `quotePrefix`           VARCHAR(191) NOT NULL DEFAULT 'QUO',
+  `creditNotePrefix`      VARCHAR(191) NOT NULL DEFAULT 'CN',
+  `enableBulkDiscount`    TINYINT(1)   NOT NULL DEFAULT 0,
+  `loyaltyPointsRate`     DOUBLE       NOT NULL DEFAULT 1,
+  `loyaltyRedemptionRate` DOUBLE       NOT NULL DEFAULT 0.01,
+  `nextInvoiceNo`         INT          NOT NULL DEFAULT 1001,
+  `nextReceiptNo`         INT          NOT NULL DEFAULT 5001,
+  `nextQuoteNo`           INT          NOT NULL DEFAULT 2001,
+  `nextCreditNoteNo`      INT          NOT NULL DEFAULT 4001,
+  `nextPurchaseNo`        INT          NOT NULL DEFAULT 3001,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ============================================================
--- VIEWS
--- ============================================================
+-- ================================================================
+--  BulkDiscountTier
+-- ================================================================
+CREATE TABLE `BulkDiscountTier` (
+  `id`          VARCHAR(191) NOT NULL,
+  `settingsId`  VARCHAR(191) NOT NULL,
+  `name`        VARCHAR(191) NOT NULL,
+  `minQty`      INT          NOT NULL,
+  `maxQty`      INT,
+  `discountPct` DOUBLE       NOT NULL,
+  `active`      TINYINT(1)   NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `BulkDiscountTier_settingsId_fkey` (`settingsId`),
+  CONSTRAINT `BulkDiscountTier_settingsId_fkey` FOREIGN KEY (`settingsId`) REFERENCES `Settings` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE OR REPLACE VIEW `v_sale_summary` AS
-  SELECT
-    s.`id`,
-    s.`receiptNo`,
-    COALESCE(c.`name`, 'Walk-in') AS `customerName`,
-    u.`name`                       AS `cashierName`,
-    s.`total`,
-    s.`paymentMethod`,
-    s.`status`,
-    s.`pointsEarned`,
-    s.`pointsRedeemed`,
-    s.`createdAt`
-  FROM `Sale` s
-  LEFT JOIN `Customer` c ON c.`id` = s.`customerId`
-  LEFT JOIN `User`     u ON u.`id` = s.`userId`;
-
-CREATE OR REPLACE VIEW `v_inventory_status` AS
-  SELECT
-    p.`id`,
-    p.`sku`,
-    p.`barcode`,
-    p.`name`,
-    cat.`name`  AS `category`,
-    p.`stock`,
-    p.`lowStockThreshold`,
-    p.`price`,
-    p.`costPrice`,
-    CASE
-      WHEN p.`stock` <= p.`lowStockThreshold` THEN 'REORDER NOW'
-      ELSE 'OK'
-    END         AS `stock_alert`,
-    p.`active`
-  FROM `Product` p
-  LEFT JOIN `Category` cat ON cat.`id` = p.`categoryId`;
-
-CREATE OR REPLACE VIEW `v_supplier_balances` AS
-  SELECT
-    s.`id`,
-    s.`name`,
-    s.`email`,
-    s.`phone`,
-    s.`balance`,
-    COUNT(p.`id`)       AS `totalPurchases`,
-    SUM(p.`total`)      AS `totalOrdered`,
-    SUM(p.`paidAmount`) AS `totalPaid`
-  FROM `Supplier` s
-  LEFT JOIN `Purchase` p ON p.`supplierId` = s.`id`
-  GROUP BY s.`id`, s.`name`, s.`email`, s.`phone`, s.`balance`
-  ORDER BY s.`balance` DESC;
-
+-- ================================================================
+--  SEED — required default settings row
+-- ================================================================
+INSERT INTO `Settings` (`id`, `companyName`, `address`, `phone`, `email`,
+  `currency`, `taxRate`, `lowStockThreshold`, `invoicePrefix`, `receiptPrefix`,
+  `quotePrefix`, `creditNotePrefix`, `enableBulkDiscount`, `loyaltyPointsRate`,
+  `loyaltyRedemptionRate`, `nextInvoiceNo`, `nextReceiptNo`, `nextQuoteNo`,
+  `nextCreditNoteNo`, `nextPurchaseNo`)
+VALUES ('global', 'C.N. Johnson Ventures Limited', 'Aba, Abia State, Nigeria',
+  '+234 803 000 0000', 'info@cnjohnson.com',
+  '₦', 7.5, 10, 'INV', 'RCP', 'QTE', 'CN', 1, 1, 100,
+  1001, 5001, 2001, 4001, 3001);
 
 SET FOREIGN_KEY_CHECKS = 1;
-
--- ============================================================
--- END — 18 tables + 3 views
--- Upload via: phpMyAdmin > Import tab > Select this file > Go
--- ============================================================
