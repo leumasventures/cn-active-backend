@@ -1,7 +1,6 @@
 -- ================================================================
 --  C.N. Johnson Ventures — MySQL Schema
 --  Generated to match prisma/schema.prisma EXACTLY
---  No backend code changes needed
 --  Database: u986504880_cnjohnson_db
 -- ================================================================
 
@@ -69,17 +68,19 @@ CREATE TABLE `Customer` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================================================================
---  Supplier
+--  Supplier  — added: contactPerson, notes
 -- ================================================================
 CREATE TABLE `Supplier` (
-  `id`        VARCHAR(191) NOT NULL,
-  `name`      VARCHAR(191) NOT NULL,
-  `email`     VARCHAR(191),
-  `phone`     VARCHAR(191),
-  `address`   VARCHAR(191),
-  `balance`   DOUBLE       NOT NULL DEFAULT 0,
-  `createdAt` DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updatedAt` DATETIME(3)  NOT NULL,
+  `id`            VARCHAR(191) NOT NULL,
+  `name`          VARCHAR(191) NOT NULL,
+  `email`         VARCHAR(191),
+  `phone`         VARCHAR(191),
+  `address`       VARCHAR(191),
+  `contactPerson` VARCHAR(191),
+  `notes`         TEXT,
+  `balance`       DOUBLE       NOT NULL DEFAULT 0,
+  `createdAt`     DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt`     DATETIME(3)  NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `Supplier_email_key` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -142,7 +143,7 @@ CREATE TABLE `Product` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================================================================
---  Sale
+--  Sale  — added: salesRepId, salesRepName, origin
 -- ================================================================
 CREATE TABLE `Sale` (
   `id`             VARCHAR(191) NOT NULL,
@@ -156,6 +157,9 @@ CREATE TABLE `Sale` (
   `pointsEarned`   INT          NOT NULL DEFAULT 0,
   `pointsRedeemed` INT          NOT NULL DEFAULT 0,
   `note`           VARCHAR(191),
+  `salesRepId`     VARCHAR(191),
+  `salesRepName`   VARCHAR(191),
+  `origin`         VARCHAR(191),
   `createdAt`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),
   UNIQUE KEY `Sale_receiptNo_key` (`receiptNo`),
@@ -182,20 +186,27 @@ CREATE TABLE `SaleItem` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================================================================
---  Purchase
+--  Purchase  — added: warehouseId, repId, notes; supplierId now nullable
 -- ================================================================
 CREATE TABLE `Purchase` (
-  `id`         VARCHAR(191) NOT NULL,
-  `purchaseNo` VARCHAR(191) NOT NULL,
-  `supplierId` VARCHAR(191) NOT NULL,
-  `total`      DOUBLE       NOT NULL,
-  `paidAmount` DOUBLE       NOT NULL DEFAULT 0,
-  `note`       VARCHAR(191),
-  `createdAt`  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `id`          VARCHAR(191) NOT NULL,
+  `purchaseNo`  VARCHAR(191) NOT NULL,
+  `supplierId`  VARCHAR(191),
+  `warehouseId` VARCHAR(191),
+  `repId`       VARCHAR(191),
+  `total`       DOUBLE       NOT NULL,
+  `paidAmount`  DOUBLE       NOT NULL DEFAULT 0,
+  `note`        VARCHAR(191),
+  `notes`       TEXT,
+  `createdAt`   DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),
   UNIQUE KEY `Purchase_purchaseNo_key` (`purchaseNo`),
-  KEY `Purchase_supplierId_fkey` (`supplierId`),
-  CONSTRAINT `Purchase_supplierId_fkey` FOREIGN KEY (`supplierId`) REFERENCES `Supplier` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+  KEY `Purchase_supplierId_fkey`  (`supplierId`),
+  KEY `Purchase_warehouseId_fkey` (`warehouseId`),
+  KEY `Purchase_repId_fkey`       (`repId`),
+  CONSTRAINT `Purchase_supplierId_fkey`  FOREIGN KEY (`supplierId`)  REFERENCES `Supplier`  (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `Purchase_warehouseId_fkey` FOREIGN KEY (`warehouseId`) REFERENCES `Warehouse` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `Purchase_repId_fkey`       FOREIGN KEY (`repId`)       REFERENCES `User`      (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================================================================
@@ -216,37 +227,43 @@ CREATE TABLE `PurchaseItem` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================================================================
---  Quote
+--  Quote  — added: repId, notes
 -- ================================================================
 CREATE TABLE `Quote` (
   `id`         VARCHAR(191) NOT NULL,
   `quoteNo`    VARCHAR(191) NOT NULL,
   `customerId` VARCHAR(191),
+  `repId`      VARCHAR(191),
   `subtotal`   DOUBLE       NOT NULL,
   `discount`   DOUBLE       NOT NULL DEFAULT 0,
   `tax`        DOUBLE       NOT NULL DEFAULT 0,
   `total`      DOUBLE       NOT NULL,
   `validUntil` DATETIME(3),
   `note`       VARCHAR(191),
+  `notes`      TEXT,
   `status`     ENUM('PENDING','ACCEPTED','REJECTED','EXPIRED') NOT NULL DEFAULT 'PENDING',
   `createdAt`  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),
   UNIQUE KEY `Quote_quoteNo_key` (`quoteNo`),
   KEY `Quote_customerId_fkey` (`customerId`),
-  CONSTRAINT `Quote_customerId_fkey` FOREIGN KEY (`customerId`) REFERENCES `Customer` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+  KEY `Quote_repId_fkey`      (`repId`),
+  CONSTRAINT `Quote_customerId_fkey` FOREIGN KEY (`customerId`) REFERENCES `Customer` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `Quote_repId_fkey`      FOREIGN KEY (`repId`)      REFERENCES `User`     (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================================================================
---  QuoteItem
+--  QuoteItem  — added: unitPrice, discountPct
 -- ================================================================
 CREATE TABLE `QuoteItem` (
-  `id`        VARCHAR(191) NOT NULL,
-  `quoteId`   VARCHAR(191) NOT NULL,
-  `productId` VARCHAR(191) NOT NULL,
-  `qty`       INT          NOT NULL,
-  `price`     DOUBLE       NOT NULL,
-  `discount`  DOUBLE       NOT NULL DEFAULT 0,
-  `total`     DOUBLE       NOT NULL,
+  `id`          VARCHAR(191) NOT NULL,
+  `quoteId`     VARCHAR(191) NOT NULL,
+  `productId`   VARCHAR(191) NOT NULL,
+  `qty`         INT          NOT NULL,
+  `price`       DOUBLE       NOT NULL,
+  `unitPrice`   DOUBLE,
+  `discount`    DOUBLE       NOT NULL DEFAULT 0,
+  `discountPct` DOUBLE       NOT NULL DEFAULT 0,
+  `total`       DOUBLE       NOT NULL,
   PRIMARY KEY (`id`),
   KEY `QuoteItem_quoteId_fkey`   (`quoteId`),
   KEY `QuoteItem_productId_fkey` (`productId`),
@@ -291,18 +308,25 @@ CREATE TABLE `CreditNoteItem` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================================================================
---  Expense
+--  Expense  — added: expenseNo, description, notes, repId; title now nullable
 -- ================================================================
 CREATE TABLE `Expense` (
-  `id`        VARCHAR(191) NOT NULL,
-  `title`     VARCHAR(191) NOT NULL,
-  `amount`    DOUBLE       NOT NULL,
-  `category`  VARCHAR(191),
-  `note`      VARCHAR(191),
-  `date`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `createdAt` DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updatedAt` DATETIME(3)  NOT NULL,
-  PRIMARY KEY (`id`)
+  `id`          VARCHAR(191) NOT NULL,
+  `expenseNo`   VARCHAR(191),
+  `title`       VARCHAR(191),
+  `description` TEXT,
+  `amount`      DOUBLE       NOT NULL,
+  `category`    VARCHAR(191),
+  `note`        VARCHAR(191),
+  `notes`       TEXT,
+  `date`        DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `repId`       VARCHAR(191),
+  `createdAt`   DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt`   DATETIME(3)  NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `Expense_expenseNo_key` (`expenseNo`),
+  KEY `Expense_repId_fkey` (`repId`),
+  CONSTRAINT `Expense_repId_fkey` FOREIGN KEY (`repId`) REFERENCES `User` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================================================================
