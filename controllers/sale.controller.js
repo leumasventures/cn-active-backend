@@ -79,6 +79,9 @@ export const createSale = async (req, res) => {
       customerId,
       pointsRedeemed = 0,
       note,
+      salesRepId,
+      salesRepName,
+      origin,
     } = req.body;
 
     if (!items?.length) {
@@ -115,6 +118,9 @@ export const createSale = async (req, res) => {
           pointsEarned,
           pointsRedeemed: Number(pointsRedeemed),
           note:           note || null,
+          salesRepId:     salesRepId || null,
+          salesRepName:   salesRepName || null,
+          origin:         origin || null,
           items: {
             create: items.map((i) => ({
               productId: i.productId,
