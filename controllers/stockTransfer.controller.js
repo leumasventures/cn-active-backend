@@ -2,12 +2,15 @@ import prisma from '../config/db.js';
 
 export const getStockTransfers = async (req, res) => {
   try {
-    const { search, page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 20 } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
-    const where = search ? { transferNo: { contains: search } } : {};
     const [transfers, total] = await prisma.$transaction([
-      prisma.stockTransfer.findMany({ where, skip, take: Number(limit), orderBy: { createdAt: 'desc' }, include: { fromWarehouse: true, toWarehouse: true, items: { include: { product: true } } } }),
-      prisma.stockTransfer.count({ where }),
+      prisma.stockTransfer.findMany({
+        skip, take: Number(limit),
+        orderBy: { createdAt: 'desc' },
+        include: { product: true, fromWarehouse: true, toWarehouse: true },
+      }),
+      prisma.stockTransfer.count(),
     ]);
     res.json({ success: true, total, page: Number(page), pages: Math.ceil(total / Number(limit)), transfers });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
@@ -15,7 +18,10 @@ export const getStockTransfers = async (req, res) => {
 
 export const getStockTransfer = async (req, res) => {
   try {
-    const transfer = await prisma.stockTransfer.findUnique({ where: { id: req.params.id }, include: { fromWarehouse: true, toWarehouse: true, items: { include: { product: true } } } });
+    const transfer = await prisma.stockTransfer.findUnique({
+      where: { id: req.params.id },
+      include: { product: true, fromWarehouse: true, toWarehouse: true },
+    });
     if (!transfer) return res.status(404).json({ success: false, message: 'Stock transfer not found' });
     res.json({ success: true, transfer });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
@@ -23,27 +29,26 @@ export const getStockTransfer = async (req, res) => {
 
 export const createStockTransfer = async (req, res) => {
   try {
-    const { fromWarehouseId, toWarehouseId, items, notes } = req.body;
-    if (fromWarehouseId === toWarehouseId) return res.status(400).json({ success: false, message: 'Source and destination warehouse must be different' });
-
-    for (const item of items) {
-      const stock = await prisma.productStock.findUnique({ where: { productId_warehouseId: { productId: item.productId, warehouseId: fromWarehouseId } } });
-      if (!stock || stock.quantity < item.qty) {
-        const product = await prisma.product.findUnique({ where: { id: item.productId } });
-        return res.status(400).json({ success: false, message: `Insufficient stock for ${product?.name || item.productId}` });
-      }
+    const { productId, fromWarehouseId, toWarehouseId, qty, note } = req.body;
+    if (fromWarehouseId === toWarehouseId) {
+      return res.status(400).json({ success: false, message: 'Source and destination warehouse must be different' });
     }
 
     const transfer = await prisma.$transaction(async (tx) => {
-      const transferNo = `TRF-${Date.now()}`;
-      const newTransfer = await tx.stockTransfer.create({ data: { transferNo, fromWarehouseId, toWarehouseId, notes, items: { create: items.map((item) => ({ productId: item.productId, qty: item.qty })) } }, include: { fromWarehouse: true, toWarehouse: true, items: { include: { product: true } } } });
+      // Deduct from source product stock
+      const product = await tx.product.findUnique({ where: { id: productId } });
+      if (!product) throw new Error('Product not found');
+      if (product.stock < qty) throw new Error(`Insufficient stock for ${product.name}`);
 
-      for (const item of items) {
-        await tx.productStock.update({ where: { productId_warehouseId: { productId: item.productId, warehouseId: fromWarehouseId } }, data: { quantity: { decrement: item.qty } } });
-        await tx.productStock.upsert({ where: { productId_warehouseId: { productId: item.productId, warehouseId: toWarehouseId } }, update: { quantity: { increment: item.qty } }, create: { productId: item.productId, warehouseId: toWarehouseId, quantity: item.qty } });
-      }
+      await tx.product.update({
+        where: { id: productId },
+        data: { stock: { decrement: Number(qty) } },
+      });
 
-      return newTransfer;
+      return tx.stockTransfer.create({
+        data: { productId, fromWarehouseId, toWarehouseId, qty: Number(qty), note: note || null },
+        include: { product: true, fromWarehouse: true, toWarehouse: true },
+      });
     });
 
     res.status(201).json({ success: true, transfer });

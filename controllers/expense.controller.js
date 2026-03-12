@@ -4,9 +4,19 @@ export const getExpenses = async (req, res) => {
   try {
     const { search, category, from, to, page = 1, limit = 20 } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
-    const where = { ...(category && { category }), ...(search && { description: { contains: search } }), ...((from || to) && { date: { ...(from && { gte: new Date(from) }), ...(to && { lte: new Date(to) }) } }) };
+    const where = {
+      ...(category && { category }),
+      ...(search && { OR: [
+        { title: { contains: search } },
+        { description: { contains: search } },
+      ]}),
+      ...((from || to) && { date: {
+        ...(from && { gte: new Date(from) }),
+        ...(to  && { lte: new Date(to)  }),
+      }}),
+    };
     const [expenses, total, aggregate] = await prisma.$transaction([
-      prisma.expense.findMany({ where, skip, take: Number(limit), orderBy: { date: 'desc' }, include: { rep: { select: { id: true, name: true } } } }),
+      prisma.expense.findMany({ where, skip, take: Number(limit), orderBy: { date: 'desc' } }),
       prisma.expense.count({ where }),
       prisma.expense.aggregate({ where, _sum: { amount: true } }),
     ]);
@@ -16,7 +26,7 @@ export const getExpenses = async (req, res) => {
 
 export const getExpense = async (req, res) => {
   try {
-    const expense = await prisma.expense.findUnique({ where: { id: req.params.id }, include: { rep: { select: { id: true, name: true } } } });
+    const expense = await prisma.expense.findUnique({ where: { id: req.params.id } });
     if (!expense) return res.status(404).json({ success: false, message: 'Expense not found' });
     res.json({ success: true, expense });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
@@ -24,17 +34,40 @@ export const getExpense = async (req, res) => {
 
 export const createExpense = async (req, res) => {
   try {
-    const { description, amount, category, date, notes } = req.body;
+    const { title, description, amount, category, date, note, notes } = req.body;
     const expenseNo = `EXP-${Date.now()}`;
-    const expense = await prisma.expense.create({ data: { expenseNo, description, amount, category, date: date ? new Date(date) : new Date(), repId: req.user.id, notes }, include: { rep: { select: { id: true, name: true } } } });
+    const expense = await prisma.expense.create({
+      data: {
+        expenseNo,
+        title:       title || description || 'Expense',
+        description: description || title || null,
+        amount:      Number(amount),
+        category:    category || null,
+        note:        note    || null,
+        notes:       notes   || null,
+        date:        date ? new Date(date) : new Date(),
+        repId:       req.user?.id || null,
+      },
+    });
     res.status(201).json({ success: true, expense });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };
 
 export const updateExpense = async (req, res) => {
   try {
-    const { description, amount, category, date, notes } = req.body;
-    const expense = await prisma.expense.update({ where: { id: req.params.id }, data: { description, amount, category, date: date ? new Date(date) : undefined, notes }, include: { rep: { select: { id: true, name: true } } } });
+    const { title, description, amount, category, date, note, notes } = req.body;
+    const expense = await prisma.expense.update({
+      where: { id: req.params.id },
+      data: {
+        title:       title || description || undefined,
+        description: description || undefined,
+        amount:      amount !== undefined ? Number(amount) : undefined,
+        category:    category || null,
+        note:        note  || null,
+        notes:       notes || null,
+        date:        date ? new Date(date) : undefined,
+      },
+    });
     res.json({ success: true, expense });
   } catch (err) {
     if (err.code === 'P2025') return res.status(404).json({ success: false, message: 'Expense not found' });
