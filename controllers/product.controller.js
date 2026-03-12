@@ -47,10 +47,13 @@ export const createProduct = async (req, res) => {
 
 export const updateProduct = async (req, res) => {
   try {
-    const { name, categoryId, unit, barcode, description, costPrice, price, warehouseId, supplierId } = req.body;
+    const { name, categoryId, unit, barcode, description, costPrice, price, stock, lowStockThreshold, warehouseId, supplierId } = req.body;
+    const data = { name, categoryId, unit, barcode, description, costPrice, price, warehouseId, supplierId };
+    if (typeof stock === 'number') data.stock = stock;
+    if (typeof lowStockThreshold === 'number') data.lowStockThreshold = lowStockThreshold;
     const product = await prisma.product.update({
       where: { id: req.params.id },
-      data: { name, categoryId, unit, barcode, description, costPrice, price, warehouseId, supplierId },
+      data,
       include: { category: true, supplier: true, warehouse: true },
     });
     res.json({ success: true, product });

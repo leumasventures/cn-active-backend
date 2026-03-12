@@ -14,19 +14,23 @@ export const updateWarehouseSchema = Joi.object({
 
 // ─── SUPPLIERS ───────────────────────────────────────────────
 export const createSupplierSchema = Joi.object({
-  name: Joi.string().required(),
-  email: Joi.string().email().optional().allow('', null),
-  phone: Joi.string().optional().allow('', null),
-  address: Joi.string().optional().allow('', null),
-  balance: Joi.number().optional().default(0),
+  name:          Joi.string().required(),
+  email:         Joi.string().email().optional().allow('', null),
+  phone:         Joi.string().optional().allow('', null),
+  address:       Joi.string().optional().allow('', null),
+  balance:       Joi.number().optional().default(0),
+  contactPerson: Joi.string().optional().allow('', null),
+  notes:         Joi.string().optional().allow('', null),
 });
 
 export const updateSupplierSchema = Joi.object({
-  name: Joi.string().optional(),
-  email: Joi.string().email().optional().allow('', null),
-  phone: Joi.string().optional().allow('', null),
-  address: Joi.string().optional().allow('', null),
-  balance: Joi.number().optional(),
+  name:          Joi.string().optional(),
+  email:         Joi.string().email().optional().allow('', null),
+  phone:         Joi.string().optional().allow('', null),
+  address:       Joi.string().optional().allow('', null),
+  balance:       Joi.number().optional(),
+  contactPerson: Joi.string().optional().allow('', null),
+  notes:         Joi.string().optional().allow('', null),
 });
 
 // ─── PRODUCTS ────────────────────────────────────────────────
@@ -83,20 +87,28 @@ export const updateCustomerSchema = Joi.object({
 
 // ─── SALES ───────────────────────────────────────────────────
 export const completeSaleSchema = Joi.object({
-  customerId: Joi.string().optional().allow('', null),
+  customerId:     Joi.string().optional().allow('', null),
   items: Joi.array().items(
     Joi.object({
       productId: Joi.string().required(),
-      qty: Joi.number().integer().min(1).required(),
-      price: Joi.number().min(0).optional(),
-      discount: Joi.number().min(0).max(100).optional(),
+      qty:       Joi.number().integer().min(1).required(),
+      price:     Joi.number().min(0).optional(),
+      discount:  Joi.number().min(0).max(100).optional(),
+      total:     Joi.number().min(0).optional(),
     })
   ).min(1).required(),
-  paymentMethod: Joi.string().valid('CASH', 'CARD', 'TRANSFER', 'OTHER').optional(),
-  discount: Joi.number().min(0).optional(),
-  taxRate: Joi.number().min(0).max(100).optional(),
-  note: Joi.string().optional().allow('', null),
-  redeemPoints: Joi.number().integer().min(0).optional(),
+  paymentMethod:  Joi.string().valid('CASH', 'CARD', 'TRANSFER', 'CREDIT', 'OTHER').optional(),
+  subtotal:       Joi.number().min(0).optional(),
+  discount:       Joi.number().min(0).optional(),
+  tax:            Joi.number().min(0).optional(),
+  total:          Joi.number().min(0).optional(),
+  taxRate:        Joi.number().min(0).max(100).optional(),
+  note:           Joi.string().optional().allow('', null),
+  pointsRedeemed: Joi.number().integer().min(0).optional(),
+  redeemPoints:   Joi.number().integer().min(0).optional(),
+  salesRepId:     Joi.string().optional().allow('', null),
+  salesRepName:   Joi.string().optional().allow('', null),
+  origin:         Joi.string().optional().allow('', null),
 });
 
 // ─── PURCHASES ───────────────────────────────────────────────
@@ -200,4 +212,3 @@ export const bulkDiscountTierSchema = Joi.object({
   discountPct: Joi.number().min(0).max(100).required(),
   active: Joi.boolean().optional().default(true),
 });
-
