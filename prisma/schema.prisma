@@ -18,7 +18,8 @@ model User {
   privileges Json?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  appState  String?  @db.LongText  
+  appState   String?  @db.LongText
+  purchases  Purchase[]
 }
 
 model Customer {
@@ -59,6 +60,7 @@ model Warehouse {
   products    Product[]
   transfersFrom StockTransfer[] @relation("FromWarehouse")
   transfersTo   StockTransfer[] @relation("ToWarehouse")
+  purchases     Purchase[]
 }
 
 model Category {
@@ -132,22 +134,16 @@ model Purchase {
   purchaseNo  String         @unique
   supplierId  String
   supplier    Supplier       @relation(fields: [supplierId], references: [id])
+  warehouseId String?
+  warehouse   Warehouse?     @relation(fields: [warehouseId], references: [id])
+  repId       String?
+  rep         User?          @relation(fields: [repId], references: [id])
   items       PurchaseItem[]
   total       Float
   paidAmount  Float          @default(0)
   note        String?
+  notes       String?
   createdAt   DateTime       @default(now())
-}
-
-model PurchaseItem {
-  id          String   @id @default(cuid())
-  purchaseId  String
-  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id])
-  qty         Int
-  costPrice   Float
-  total       Float
 }
 
 model Quote {
@@ -272,4 +268,14 @@ enum QuoteStatus {
   ACCEPTED
   REJECTED
   EXPIRED
+}
+model PurchaseItem {
+  id          String   @id @default(cuid())
+  purchaseId  String
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  qty         Int
+  costPrice   Float
+  total       Float
 }
