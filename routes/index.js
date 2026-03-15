@@ -91,10 +91,10 @@ router.get('/sync/all', async (req, res, next) => {
       // Suppliers
       prisma.supplier.findMany({ orderBy: { name: 'asc' } }),
 
-      // Sales reps (CASHIER + MANAGER roles only)
-      prisma.user.findMany({
-        where:   { role: { in: ['CASHIER', 'MANAGER'] }, active: true },
-        select:  { id: true, name: true, email: true, role: true, appState: true },
+      // Sales reps
+      prisma.salesRep.findMany({
+        where:   { active: true },
+        include: { warehouse: { select: { id: true, name: true } } },
         orderBy: { name: 'asc' },
       }),
 
@@ -290,19 +290,15 @@ router.get('/sync/all', async (req, res, next) => {
         products:          shapedProducts,
         customers,
         suppliers,
-        salesReps: salesReps.map(r => {
-          let extra = {};
-          try { extra = JSON.parse(r.appState || '{}'); } catch {}
-          return {
-            id:          r.id,
-            name:        r.name,
-            email:       r.email        || '',
-            phone:       extra.phone    || '',
-            warehouseId: extra.warehouseId || null,
-            commission:  extra.commission  ?? 2,
-            totalSales:  extra.totalSales  ?? 0,
-          };
-        }),
+        salesReps: salesReps.map(r => ({
+          id:          r.id,
+          name:        r.name,
+          email:       r.email        || '',
+          phone:       r.phone        || '',
+          warehouseId: r.warehouseId  || null,
+          commission:  r.commission   ?? 2,
+          totalSales:  r.totalSales   ?? 0,
+        })),
         sales:             shapedSales,
         purchases:         shapedPurchases,
         expenses,

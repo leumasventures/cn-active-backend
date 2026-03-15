@@ -22,6 +22,20 @@ model User {
   purchases  Purchase[]
 }
 
+model SalesRep {
+  id          String     @id @default(cuid())
+  name        String
+  email       String?    @unique
+  phone       String?
+  warehouseId String?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+  commission  Float      @default(2)
+  totalSales  Float      @default(0)
+  active      Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
 model Customer {
   id            String       @id @default(cuid())
   name          String
@@ -57,9 +71,11 @@ model Warehouse {
   name          String
   location      String?
   description   String?
+  manager       String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   products      Product[]
+  salesReps     SalesRep[]
   transfersFrom StockTransfer[] @relation("FromWarehouse")
   transfersTo   StockTransfer[] @relation("ToWarehouse")
   purchases     Purchase[]
