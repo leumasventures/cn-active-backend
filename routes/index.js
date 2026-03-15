@@ -15,6 +15,7 @@ import expenseRoutes       from './expenses.routes.js';
 import reportRoutes        from './reports.routes.js';
 import stockTransferRoutes from './stockTransfers.routes.js';
 import stateRoutes         from './state.routes.js';
+import salesRepRoutes      from './salesReps.routes.js';
 
 const router = express.Router();
 
@@ -33,6 +34,7 @@ router.use('/expenses',        expenseRoutes);
 router.use('/reports',         reportRoutes);
 router.use('/stock-transfers', stockTransferRoutes);
 router.use('/state',           stateRoutes);
+router.use('/sales-reps',      salesRepRoutes);
 
 /* ── Ping ─────────────────────────────────────────────────────────
    GET /api/ping
@@ -89,10 +91,10 @@ router.get('/sync/all', async (req, res, next) => {
       // Suppliers
       prisma.supplier.findMany({ orderBy: { name: 'asc' } }),
 
-      // Sales reps (Users who are not ADMIN)
+      // Sales reps (CASHIER + MANAGER roles only)
       prisma.user.findMany({
-        where:   { active: true },
-        select:  { id: true, name: true, email: true, role: true },
+        where:   { role: { in: ['CASHIER', 'MANAGER'] }, active: true },
+        select:  { id: true, name: true, email: true, role: true, appState: true },
         orderBy: { name: 'asc' },
       }),
 
@@ -288,7 +290,19 @@ router.get('/sync/all', async (req, res, next) => {
         products:          shapedProducts,
         customers,
         suppliers,
-        salesReps:         salesReps,
+        salesReps: salesReps.map(r => {
+          let extra = {};
+          try { extra = JSON.parse(r.appState || '{}'); } catch {}
+          return {
+            id:          r.id,
+            name:        r.name,
+            email:       r.email        || '',
+            phone:       extra.phone    || '',
+            warehouseId: extra.warehouseId || null,
+            commission:  extra.commission  ?? 2,
+            totalSales:  extra.totalSales  ?? 0,
+          };
+        }),
         sales:             shapedSales,
         purchases:         shapedPurchases,
         expenses,
